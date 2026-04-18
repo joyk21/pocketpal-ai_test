@@ -26,7 +26,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@andycui/react-native-http-bridge-refurbished": "^2.0.2"
+    "@andycui/react-native-http-bridge-refurbished": "^2.0.2",
     "@dr.pogodin/react-native-fs": "^2.36.0",
     "@flyerhq/react-native-link-preview": "^1.6.0",
     "@gorhom/bottom-sheet": "^5.2.8",
