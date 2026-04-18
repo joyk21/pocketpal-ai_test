@@ -13,6 +13,9 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
 
+// 1. 导入 API 桥接插件
+import { bridge } from '@andycui/react-native-http-bridge-refurbished';
+
 import {uiStore} from './src/store';
 import {useTheme} from './src/hooks';
 import {useDeepLinking} from './src/hooks/useDeepLinking';
@@ -60,9 +63,34 @@ const App = observer(() => {
   const styles = createStyles(theme);
   const currentL10n = l10n[uiStore.language];
 
-  // Initialize locale with the current language
+  [span_0](start_span)// 2. 初始化语言并启动 API 服务[span_0](end_span)
   React.useEffect(() => {
     initLocale(uiStore.language);
+
+    // 启动 API 服务，监听 5566 端口
+    try {
+      bridge.start(5566, 'http-bridge', (request) => {
+        if (request.type === 'GET' && request.url === '/ping') {
+          bridge.respond(
+            request.requestId, 
+            200, 
+            'application/json', 
+            '{"status": "ok", "message": "PocketPal API is active"}'
+          );
+        }
+      });
+    } catch (e) {
+      console.log('API Server failed to start:', e);
+    }
+
+    // 组件卸载时停止服务
+    return () => {
+      try {
+        bridge.stop();
+      } catch (e) {
+        console.log('API Server stop error:', e);
+      }
+    };
   }, []);
 
   return (
@@ -70,6 +98,125 @@ const App = observer(() => {
       <MemorySnapshotTrigger />
       <SafeAreaProvider>
         <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
+          <PaperProvider theme={theme}>
+            <L10nContext.Provider value={currentL10n}>
+              <NavigationContainer>
+                <DeepLinkHandler />
+                <BottomSheetModalProvider>
+                  <Drawer.Navigator
+                    screenOptions={{
+                      headerLeft: () => <HeaderLeft />,
+                      drawerStyle: {
+                        width: screenWidth > 400 ? 320 : screenWidth * 0.8,
+                      },
+                      headerStyle: {
+                        backgroundColor: theme.colors.background,
+                      },
+                      headerTintColor: theme.colors.onBackground,
+                      headerTitleStyle: styles.headerTitle,
+                    }}
+                    drawerContent={props => <SidebarContent {...props} />}>
+                    <Drawer.Screen
+                      name={ROUTES.CHAT}
+                      component={gestureHandlerRootHOC(ChatScreen)}
+                      options={{
+                        headerShown: false,
+                      }}
+                    />
+                    <Drawer.Screen
+                      name={ROUTES.PALS}
+                      component={gestureHandlerRootHOC(PalsScreen)}
+                      options={{
+                        headerRight: () => <PalHeaderRight />,
+                        headerStyle: styles.headerWithoutDivider,
+                        title: currentL10n.screenTitles.pals,
+                      }}
+                    />
+                    <Drawer.Screen
+                      name={ROUTES.MODELS}
+                      component={gestureHandlerRootHOC(ModelsScreen)}
+                      options={{
+                        headerRight: () => <ModelsHeaderRight />,
+                        headerStyle: styles.headerWithoutDivider,
+                        title: currentL10n.screenTitles.models,
+                      }}
+                    />
+                    <Drawer.Screen
+                      name={ROUTES.BENCHMARK}
+                      component={gestureHandlerRootHOC(BenchmarkScreen)}
+                      options={{
+                        headerStyle: styles.headerWithoutDivider,
+                        title: currentL10n.screenTitles.benchmark,
+                      }}
+                    />
+                    <Drawer.Screen
+                      name={ROUTES.SETTINGS}
+                      component={gestureHandlerRootHOC(SettingsScreen)}
+                      options={{
+                        headerStyle: styles.headerWithoutDivider,
+                        title: currentL10n.screenTitles.settings,
+                      }}
+                    />
+                    <Drawer.Screen
+                      name={ROUTES.APP_INFO}
+                      component={gestureHandlerRootHOC(AboutScreen)}
+                      options={{
+                        headerStyle: styles.headerWithoutDivider,
+                        title: currentL10n.screenTitles.appInfo,
+                      }}
+                    />
+
+                    {/* Only show Dev Tools screen in debug mode */}
+                    {isDebugMode && (
+                      <Drawer.Screen
+                        name={ROUTES.DEV_TOOLS}
+                        component={gestureHandlerRootHOC(DevToolsScreen)}
+                        options={{
+                          headerStyle: styles.headerWithoutDivider,
+                          title: 'Dev Tools',
+                        }}
+                      />
+                    )}
+                  </Drawer.Navigator>
+                </BottomSheetModalProvider>
+              </NavigationContainer>
+            </L10nContext.Provider>
+          </PaperProvider>
+        </KeyboardProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+});
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+    },
+    headerWithoutDivider: {
+      elevation: 0,
+      shadowOpacity: 0,
+      borderBottomWidth: 0,
+      backgroundColor: theme.colors.background,
+    },
+    headerWithDivider: {
+      backgroundColor: theme.colors.background,
+    },
+    headerTitle: {
+      ...theme.fonts.titleSmall,
+    },
+  });
+
+// Wrap the App component with AppWithMigration to show migration UI when needed
+const AppWithMigrationWrapper = () => {
+  return (
+    <AppWithMigration>
+      <App />
+    </AppWithMigration>
+  );
+};
+
+export default AppWithMigrationWrapper;
           <PaperProvider theme={theme}>
             <L10nContext.Provider value={currentL10n}>
               <NavigationContainer>
